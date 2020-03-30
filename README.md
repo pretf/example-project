@@ -1,2 +1,3 @@
 # example-project
-Example project using Pretf
+
+Example project using Pretf.

@@ -1,0 +1,9 @@
+__pycache__/
+.direnv/
+.pytest_cache/
+.tool-versions
+
+# Ignore temporary files created by Pretf.
+*/*/*
+!terraform.tfvars
+!pretf.workflow.py
