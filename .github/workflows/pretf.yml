@@ -1,0 +1,78 @@
+# Inspired by https://github.com/timberio/vector-test-harness-github-actions-test-repo
+
+name: Pretf
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  plan:
+
+    runs-on: ubuntu-18.04
+
+    if: |
+      github.event_name == 'issue_comment' && github.event.action == 'created'
+      && github.event.issue.pull_request != null
+      && startsWith(github.event.comment.body, '/plan')
+
+    steps:
+    - name: acknowledge
+      uses: actions/github-script@0.9.0
+      with:
+        github-token: '${{secrets.GITHUB_TOKEN}}'
+        script: |
+          github.reactions.createForIssueComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            comment_id: context.payload.comment.id,
+            content: "rocket"
+          })
+
+    - name: authorize
+      uses: lannonbr/repo-permission-check-action@2.0.1
+      with:
+        permission: write
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: pretf
+      run: python "$GITHUB_WORKSPACE/.github/workflows/pretf.py" | tee "$GITHUB_WORKSPACE/output"
+
+    - name: comment
+      if: always()
+      uses: actions/github-script@0.9.0
+      with:
+        github-token: '${{secrets.GITHUB_TOKEN}}'
+        script: |
+          const fs = require('fs');
+          const { promisify } = require('util');
+          const readFileAsync = promisify(fs.readFile);
+
+          console.log(process.env);
+          console.log(context);
+
+          let output;
+          try {
+            output = await readFileAsync(`${process.env.GITHUB_WORKSPACE}/output`);
+            output = '```\n' + output + '\n```\n';
+          } catch {
+            output = "Something went wrong, see log for more details.\n"
+          }
+
+          const body =
+            `Plan requested by ${context.payload.comment.html_url} is complete!\n` +
+            '\n' +
+            output +
+            '\n' +
+            `You can check the [execution log](${context.payload.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}) to learn more!`;
+
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body
+          })

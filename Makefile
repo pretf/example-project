@@ -1,4 +1,4 @@
-PYTHON_SOURCES = *.py vpc vpc-peering
+PYTHON_SOURCES = *.py .github vpc vpc-peering
 
 .PHONY: tidy
 tidy:
