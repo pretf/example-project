@@ -29,6 +29,9 @@ jobs:
             content: "rocket"
           });
 
+    - name: debug
+      uses: hmarr/debug-action
+
     - name: authorize
       uses: lannonbr/repo-permission-check-action@2.0.1
       with:
