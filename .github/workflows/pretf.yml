@@ -27,7 +27,7 @@ jobs:
             repo: context.repo.repo,
             comment_id: context.payload.comment.id,
             content: "rocket"
-          });
+          })
 
     - name: authorize
       uses: lannonbr/repo-permission-check-action@2.0.1
@@ -36,16 +36,25 @@ jobs:
       env:
         GITHUB_TOKEN: '${{secrets.GITHUB_TOKEN}}'
 
+    - name: get upstream branch
+      id: upstreambranch
+      run: |
+        echo "::set-output name=ref::$(curl -sS -H 'Accept: application/vnd.github.sailor-v-preview+json' ${{ github.event.issue.pull_request.url }} | jq -r .head.ref)"
+
     - name: checkout
       uses: actions/checkout@v2
+      with:
+        ref: '${{ steps.upstreambranch.outputs.ref }}'
 
     - name: pretf
       run: |
-        echo $GITHUB_COMMENT
-        echo $GITHUB_WORKSPACE
-        pwd
+        echo "GITHUB_COMMENT=$GITHUB_COMMENT"
+        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+        echo "pwd=$(pwd)"
+        echo "PWD=$(PWD)"
+        echo "HOME=$(HOME)"
         mkdir -p .direnv .docker/.direnv .docker/home
-        echo $AWS_CREDENTIALS_FILE > /tmp/aws
+        echo $AWS_CREDENTIALS > /tmp/aws
         docker run --rm \
           -v $PWD:/src \
           -v $PWD/.docker/.direnv:/src/.direnv \
@@ -59,6 +68,7 @@ jobs:
           pretf github-action
         rm /tmp/aws
       env:
+        AWS_CREDENTIALS: '${{ secrets.AWS_CREDENTIALS_FILE }}'
         GITHUB_COMMENT: '${{github.event.comment.body}}'
 
     - name: comment
