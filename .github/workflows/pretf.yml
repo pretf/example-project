@@ -27,7 +27,7 @@ jobs:
             repo: context.repo.repo,
             comment_id: context.payload.comment.id,
             content: "rocket"
-          })
+          });
 
     - name: authorize
       uses: lannonbr/repo-permission-check-action@2.0.1
@@ -48,11 +48,6 @@ jobs:
 
     - name: pretf
       run: |
-        echo "GITHUB_COMMENT=$GITHUB_COMMENT"
-        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-        echo "pwd=$(pwd)"
-        echo "PWD=$(PWD)"
-        echo "HOME=$(HOME)"
         mkdir -p .direnv .docker/.direnv .docker/home
         echo $AWS_CREDENTIALS > /tmp/aws
         docker run --rm \
@@ -64,12 +59,13 @@ jobs:
           -v /etc/passwd:/etc/passwd:ro \
           -u $(id -u):$(id -g) \
           -w /src \
+          -e GITHUB_ACTION \
           claranet/direnv-asdf:latest \
           pretf github-action
         rm /tmp/aws
       env:
         AWS_CREDENTIALS: '${{ secrets.AWS_CREDENTIALS_FILE }}'
-        GITHUB_COMMENT: '${{github.event.comment.body}}'
+        GITHUB_ACTION: '${{github.event.comment.body}}'
 
     - name: comment
       if: always()
