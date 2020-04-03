@@ -14,7 +14,7 @@ jobs:
     if: |
       github.event_name == 'issue_comment' && github.event.action == 'created'
       && github.event.issue.pull_request != null
-      && startsWith(github.event.comment.body, '/plan')
+      && startsWith(github.event.comment.body, '/')
 
     steps:
     - name: acknowledge
@@ -27,26 +27,45 @@ jobs:
             repo: context.repo.repo,
             comment_id: context.payload.comment.id,
             content: "rocket"
-          })
+          });
 
     - name: authorize
       uses: lannonbr/repo-permission-check-action@2.0.1
       with:
         permission: write
       env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        GITHUB_TOKEN: '${{secrets.GITHUB_TOKEN}}'
 
     - name: checkout
       uses: actions/checkout@v2
 
     - name: pretf
-      run: python "$GITHUB_WORKSPACE/.github/workflows/pretf.py" | tee "$GITHUB_WORKSPACE/output"
+      run: |
+        echo $GITHUB_COMMENT
+        echo $GITHUB_WORKSPACE
+        pwd
+        mkdir -p .direnv .docker/.direnv .docker/home
+        echo $AWS_CREDENTIALS_FILE > /tmp/aws
+        docker run --rm \
+          -v $PWD:/src \
+          -v $PWD/.docker/.direnv:/src/.direnv \
+          -v $PWD/.docker/home:$HOME \
+          -v /tmp/aws:/tmp/aws:ro \
+          -e AWS_SHARED_CREDENTIALS_FILE=/tmp/aws \
+          -v /etc/passwd:/etc/passwd:ro \
+          -u $(id -u):$(id -g) \
+          -w /src \
+          claranet/direnv-asdf:latest \
+          pretf github-action
+        rm /tmp/aws
+      env:
+        GITHUB_COMMENT: '${{github.event.comment.body}}'
 
     - name: comment
       if: always()
       uses: actions/github-script@0.9.0
       with:
-        github-token: '${{secrets.GITHUB_TOKEN}}'
+        github-token: '${{ secrets.GITHUB_TOKEN }}'
         script: |
           const fs = require('fs');
           const { promisify } = require('util');
@@ -55,24 +74,23 @@ jobs:
           console.log(process.env);
           console.log(context);
 
-          let output;
+          let output, body;
           try {
-            output = await readFileAsync(`${process.env.GITHUB_WORKSPACE}/output`);
-            output = '```\n' + output + '\n```\n';
+            output = await readFileAsync(`${process.env.GITHUB_WORKSPACE}/github-output`);
+            body = `Action requested by ${context.payload.comment.html_url} is complete!\n\n${output}`;
           } catch {
-            output = "Something went wrong, see log for more details.\n"
+            try {
+              output = await readFileAsync(`${process.env.GITHUB_WORKSPACE}/github-error`);
+              body = `Action requested by ${context.payload.comment.html_url} failed!\n\n${output}`;
+            } catch {
+              body = `Action requested by ${context.payload.comment.html_url} failed to run!`;
+            }
           }
-
-          const body =
-            `Plan requested by ${context.payload.comment.html_url} is complete!\n` +
-            '\n' +
-            output +
-            '\n' +
-            `You can check the [execution log](${context.payload.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}) to learn more!`;
+          body = `${body}\n\nYou can check the [execution log](${context.payload.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}) to learn more!`;
 
           github.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
             body
-          })
+          });
