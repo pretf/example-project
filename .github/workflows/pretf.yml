@@ -39,15 +39,12 @@ jobs:
     - name: debug
       uses: hmarr/debug-action@v1.0.0
 
-    - name: checkout
+    - name: checkout default branch
       uses: actions/checkout@v2
-      run: |
-        DEFAULT_BRANCH=${{github.event.repository.default_branch}}
+
+    - name: checkout pull request branch
+    - run: |
         PULL_REQUEST_REF=$(curl -sS -H 'Accept: application/vnd.github.sailor-v-preview+json' ${{github.event.issue.pull_request.url}} | jq -r .head.ref)
-        git init
-        git remote add origin ${{github.event.repository.clone_url}}
-        git fetch --no-tags --prune --depth=1 origin +refs/heads/$DEFAULT_BRANCH*:refs/remotes/origin/$DEFAULT_BRANCH*
-        git checkout -b $DEFAULT_BRANCH refs/remotes/origin/$DEFAULT_BRANCH
         git fetch --no-tags --prune --depth=1 origin +refs/heads/$PULL_REQUEST_REF*:refs/remotes/origin/$PULL_REQUEST_REF* +refs/tags/$PULL_REQUEST_REF*:refs/tags/$PULL_REQUEST_REF*
         git checkout -b $PULL_REQUEST_REF refs/remotes/origin/$PULL_REQUEST_REF
 
