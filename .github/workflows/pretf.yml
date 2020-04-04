@@ -7,7 +7,7 @@ on:
     types: [created]
 
 jobs:
-  plan:
+  github-action:
 
     runs-on: ubuntu-18.04
 
@@ -29,9 +29,6 @@ jobs:
             content: "rocket"
           });
 
-    - name: debug
-      uses: hmarr/debug-action@v1.0.0
-
     - name: authorize
       uses: lannonbr/repo-permission-check-action@2.0.1
       with:
@@ -39,41 +36,57 @@ jobs:
       env:
         GITHUB_TOKEN: '${{secrets.GITHUB_TOKEN}}'
 
-    - name: get upstream branch
-      id: upstreambranch
-      run: |
-        echo "::set-output name=ref::$(curl -sS -H 'Accept: application/vnd.github.sailor-v-preview+json' ${{ github.event.issue.pull_request.url }} | jq -r .head.ref)"
+    - name: debug
+      uses: hmarr/debug-action@v1.0.0
 
     - name: checkout
       uses: actions/checkout@v2
-      with:
-        ref: '${{ steps.upstreambranch.outputs.ref }}'
-
-    - name: pretf
       run: |
-        mkdir -p .direnv .docker/.direnv .docker/home
-        echo "$AWS_CREDENTIALS_FILE_CONTENTS" > /tmp/aws
-        docker run --rm \
-          -v $PWD:/src \
-          -v $PWD/.docker/.direnv:/src/.direnv \
-          -v $PWD/.docker/home:$HOME \
-          -v /tmp/aws:$HOME/.aws/credentials:ro \
-          -v /etc/passwd:/etc/passwd:ro \
-          -u $(id -u):$(id -g) \
-          -w /src \
-          -e GITHUB_COMMENT \
-          claranet/direnv-asdf:latest \
-          pretf github-action
-        rm /tmp/aws
+        DEFAULT_BRANCH=${{github.event.repository.default_branch}}
+        PULL_REQUEST_REF=$(curl -sS -H 'Accept: application/vnd.github.sailor-v-preview+json' ${{github.event.issue.pull_request.url}} | jq -r .head.ref)
+        git init
+        git remote add origin ${{github.event.repository.clone_url}}
+        git fetch --no-tags --prune --depth=1 origin +refs/heads/$DEFAULT_BRANCH*:refs/remotes/origin/$DEFAULT_BRANCH*
+        git checkout -b $DEFAULT_BRANCH refs/remotes/origin/$DEFAULT_BRANCH
+        git fetch --no-tags --prune --depth=1 origin +refs/heads/$PULL_REQUEST_REF*:refs/remotes/origin/$PULL_REQUEST_REF* +refs/tags/$PULL_REQUEST_REF*:refs/tags/$PULL_REQUEST_REF*
+        git checkout -b $PULL_REQUEST_REF refs/remotes/origin/$PULL_REQUEST_REF
+
+    - name: write aws credentials
+      run: |
+        mkdir ~/.aws
+        echo "$AWS_CREDENTIALS_FILE_CONTENTS" > ~/.aws/credentials
       env:
-        AWS_CREDENTIALS_FILE_CONTENTS: '${{ secrets.AWS_CREDENTIALS_FILE_CONTENTS }}'
+        AWS_CREDENTIALS_FILE_CONTENTS: '${{secrets.AWS_CREDENTIALS_FILE_CONTENTS}}'
+
+    - name: pretf github-action
+      run: |
+        mkdir -p .docker-home && \
+        docker run --rm \
+          -u $(id -u):$(id -g) \
+          -v /etc/passwd:/etc/passwd:ro \
+          -v $PWD/.docker-home:$HOME \
+          -v $HOME/.aws:$HOME/.aws \
+          -w /src \
+          -v $PWD:/src \
+          -e DEFAULT_BRANCH \
+          -e GITHUB_COMMENT \
+          $DOCKER_IMAGE \
+          $DOCKER_CMD
+      env:
+        DEFAULT_BRANCH: '${{github.event.repository.default_branch}}'
         GITHUB_COMMENT: '${{github.event.comment.body}}'
+        DOCKER_IMAGE: claranet/direnv-asdf:latest
+        DOCKER_CMD: pretf github-action
+
+    - name: delete aws credentials
+      if: always()
+      run: rm -rf ~/.aws
 
     - name: comment
       if: always()
       uses: actions/github-script@0.9.0
       with:
-        github-token: '${{ secrets.GITHUB_TOKEN }}'
+        github-token: '${{secrets.GITHUB_TOKEN}}'
         script: |
           const fs = require('fs');
           const { promisify } = require('util');
