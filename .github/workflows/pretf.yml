@@ -43,7 +43,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: checkout pull request branch
-    - run: |
+      run: |
         PULL_REQUEST_REF=$(curl -sS -H 'Accept: application/vnd.github.sailor-v-preview+json' ${{github.event.issue.pull_request.url}} | jq -r .head.ref)
         git fetch --no-tags --prune --depth=1 origin +refs/heads/$PULL_REQUEST_REF*:refs/remotes/origin/$PULL_REQUEST_REF* +refs/tags/$PULL_REQUEST_REF*:refs/tags/$PULL_REQUEST_REF*
         git checkout -b $PULL_REQUEST_REF refs/remotes/origin/$PULL_REQUEST_REF
