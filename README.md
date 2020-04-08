@@ -1,5 +1,18 @@
 # Pretf Example Project
 
+Short version:
+
+* Managed DRY S3 Terraform backend.
+  * Use variables when defining backend.
+  * Create S3 bucket and DynamoDB table using CloudFormation.
+* Multiple AWS profiles with MFA in single stack.
+  * Good for VPC peering, DNS delegation, and other cross-account systems.
+* Run locally with pure Terraform commands and no extra CLI arguments.
+* Run in simple CI/CD system with pull requests for code review and plan approval.
+* Ensure code matches reality by applying changes to all environments immediately.
+  * Enforces better coding practices - feature flags and versioned remote root modules.
+* Ability to generate complex configuration with Python when HCL is too limited.
+
 This example project demonstrates:
 
 * Multiple stacks with multiple environments.
