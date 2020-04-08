@@ -217,17 +217,23 @@ module "bucket" {
 
 If you want to version an entire stack with different environments using different versions of code, Pretf can help. See the [vpc](vpc) stack for an example of this.
 
-## Drift detection
+## Thoughts on drift detection
 
 There are multiple ways for the infrastructure and code to "drift" apart.
 
-1. An external process (or user) changes the infrastructure.
+1. An external process (such as a user in the AWS console) changes the infrastructure.
 2. Changes have been made to one stack which affects another stack.
 
-We cannot reasonably fully prevent the first scenario from happening, so we need some form of drift detection for all stacks/environments in the project. This will need to run on a schedule because we don't know it might happen.
+We cannot reasonably fully prevent the first scenario from happening, so we want some form of drift detection for all stacks/environments in the project. This would need to run on a regular schedule (e.g. every hour) because we don't know when changes might happen.
 
-The second scenario is likely to happen, but it is impossible to detect this automatically. Consider a Terraform stack that creates a CloudFormation stack that creates a Lambda function custom resource that performs a lookup on a resource created by another stack. There is no way to reliably determine that one stack relies on another stack.
+The second scenario is likely to happen in many projects. Ideally, the system would automatically detect which dependant stacks need updating after changes have been applied, but it is impossible to make this 100% accurate. Consider a Terraform stack that creates a CloudFormation stack that creates a Lambda function custom resource that performs a lookup on a resource created by another stack. There is no way to reliably determine that one stack relies on another stack.
 
-We could declare relationships between stacks. This would allow a CI/CD system to quickly start the plan/approve/apply process for dependant stacks.
+We could declare relationships between stacks. This would allow a CI/CD system to quickly start the plan/approve/apply process for dependant stacks. However, this requires extra work for the project maintainers, and the only benefit this has over triggering drift detection for all stacks is that it would be faster. Unless the project has a very large number of stacks, it is probably not worth the complication of introducing the concept of stack dependencies.
 
-However, this requires extra work for the project maintainers, and the only benefit this has over initiating drift detection for all stacks is that it would be checking the know dependant stacks first. Unless the project has a very large number of stacks, it is not worth the complication of declaring dependant stacks.
+Possible solution:
+
+* Regular drift detection that creates empty pull requests if it finds unapplied changes.
+* Disable drift detection while pull requests are open, enable again and run immediately after all have been closed.
+    * This allows users to manually plan/apply known dedpendant stacks while the pull request is still open.
+    * But this requires applying from a branch instead of master.
+    * But this requires pull requests to be closed quickly. Can we make the check better than "are there any pull requests open?"
