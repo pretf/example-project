@@ -1,17 +1,21 @@
 # Pretf Example Project
 
-Short version:
+Desired features and qualities:
 
-* Managed DRY S3 Terraform backend.
-  * Use variables when defining backend.
-  * Create S3 bucket and DynamoDB table using CloudFormation.
 * Multiple AWS profiles with MFA in single stack.
   * Good for VPC peering, DNS delegation, and other cross-account systems.
+* Managed DRY S3 Terraform backend.
+  * Allow use of variables when defining backend.
+  * Automatically create S3 backend resources.
 * Run locally with pure Terraform commands and no extra CLI arguments.
-* Run in simple CI/CD system with pull requests for code review and plan approval.
-* Ensure code matches reality by applying changes to all environments immediately.
+* Run in GitHub Actions as part of pull requests.
+  * Review and approve plans before applying changes.
+* Ensure code matches reality by applying all changes together.
   * Encourages better development practices, using feature flags and versioned remote root modules.
-* Ability to generate complex configuration with Python when HCL is too limited.
+* Ability to generate configuration with Python to work around Terraform/HCL limitations.
+    * Dynamic backend configuration.
+    * Dynamic module source and version.
+    * Complicated resources.
 
 This example project demonstrates:
 
