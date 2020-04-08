@@ -10,7 +10,7 @@ Short version:
 * Run locally with pure Terraform commands and no extra CLI arguments.
 * Run in simple CI/CD system with pull requests for code review and plan approval.
 * Ensure code matches reality by applying changes to all environments immediately.
-  * Enforces better coding practices - feature flags and versioned remote root modules.
+  * Encourages better development practices, using feature flags and versioned remote root modules.
 * Ability to generate complex configuration with Python when HCL is too limited.
 
 This example project demonstrates:
@@ -45,11 +45,11 @@ Many of the features and goals of this example, and Pretf itself, are inspired a
     * This is completely optional, but recommended.
     * This example demonstrates just one way to augment a Terraform project. You can write your own `pretf.workflow.py` file(s) and do anything you want.
 
-## Hierachy and detecting changes in a CI/CD system
+## Detecting changes in a CI/CD system
 
-The hierarchy of this example project is crucial.
+When submitting a pull request, the CI/CD system detects which stacks have changed and automatically runs `terraform plan` where appropriate. This section explains how this works.
 
-Consider this non-hierarchical project structure:
+Consider this project structure:
 
 ```
 modules/
@@ -76,6 +76,8 @@ stacks/
 
 It is not clear which stacks use `modules/tags`. There is no easy way to determine which stacks will be affected when changes have been made to `modules/tags/main.tf`.
 
+> Note: [terraform-diff](https://github.com/contentful-labs/terraform-diff) and similar approaches could help with some cases, but it would need to be aware of (or make assumptions about) the structure of the project. Pretf supports custom workflows to allow many different project structures. Supporting something so flexible would probably be difficult or messy.
+
 Now consider this *hierarchical* project structure:
 
 ```
@@ -99,19 +101,23 @@ vpc-peering/
         terraform.tfvars
 ```
 
-The hierarchy of this project makes it easy to determine which directories to plan/apply whenever files have changed. If you edit `vpc/main.tf` then it will potentially affect all directories below it: `vpc/dev` and `vpc/prod`. If you edit `vpc/dev/terraform.tfvars` then it will only affect itself, as it is at the bottom of the hierarchy.
+The hierarchy of this project makes it easy to determine which directories to plan/apply when files have changed. If you edit `vpc/main.tf` then it will potentially affect all directories below it: `vpc/dev` and `vpc/prod`. If you edit `vpc/dev/terraform.tfvars` then it will only affect itself, as it is at the bottom of the hierarchy.
 
-But where did the `tags` module go?
+But where did the `tags` module from the first structure go?
 
 Let's say that the module was only used by the `vpc` directory and it was very simple. In this case, we'd just move it into `vpc/tags.tf`. Just like `vpc/main.tf`, changes to `vpc/tags.tf` will potentially affect the directories below it: `vpc/dev` and `vpc/prod`.
 
 Let's say that the module was used by both `vpc` and `vpc-peering` stacks. In this case, we'd move it into a separate git repository, and `vpc/main.tf` and `vpc-peering/main.tf` would include it as a versioned remote module. When changes are made to the `tags` module repository, and a new version is released, we would update `vpc/main.tf` and `vpc-peering/main.tf` to use the new version. We can now determine that all directories below `vpc` and `vpc-peering` have potentially changed, but the `iam` directory has not.
 
-## Hierarchy, CI/CD, and making changes to specific environments
+## Making changes to specific environments
 
-This hierarchical project structure supports and encourages having a project where **everything** in the master branch has been deployed to production. There should never be a situation where you have code in the master branch that has been applied to dev but you're waiting to test it before applying it to production. Untested changes from one pull request should not block another pull request.
+When submitting a pull request, the CI/CD system will plan all affected stacks as a group, and apply all affected stacks as a group. This encourages having **everything** in the master branch deployed immediately, which in turn discourages you from making changes that affect multiple environments.
 
-So how does it work? Let's use the same structure from last time:
+If a CI/CD system has multiple deployment stages (for example: deploy to dev, wait for approval, deploy to stage, wait for approval, deploy to prod) then *the intended state of the infrastructure is hidden within the current state of the CI/CD system*.
+
+Applying all changes immediately encourages better development practices, using feature flags and versioned remote root modules.
+
+How does it work? Let's use the same structure from last time:
 
 ```
 iam/
@@ -134,88 +140,79 @@ vpc-peering/
         terraform.tfvars
 ```
 
-If you make a change to `vpc/main.tf`, it might affect `vpc/dev` and `vpc/prod`. If your CI/CD system plans and applies changes to both stacks at the same time, then this will practically force you into making changes that only affect one of them at a time.
+If you make a change to `vpc/main.tf`, the CI/CD system will plan and apply both `vpc/dev` and `vpc/prod` together. This practically forces you into making sure that pull requests and their changes will only affect one environment at a time.
 
 There are 3 main ways to do this.
 
 You can start by putting conditional logic directly in your Terraform code. Actually, don't do this, it is messy.
 
 ```hcl
-resource "aws_s3_bucket" "this" {
-  count  = var.env == "dev" || var.env == "stage" ? 1 : 0  # enabled with conditional logic
-  bucket = "my-bucket-${var.env}"
-  acl    = "private"
-
-  dynamic "versioning" {
-    for_each = var.env == "dev" ? [1] : []                 # enabled with conditional logic
-    content {
-      enabled = true
-    }
-  }
+resource "aws_vpc" "this" {
+  cidr_block           = var.cidr_block
+  enable_dns_support   = var.env == "dev" || var.env == "stage"
+  enable_dns_hostnames = var.env == "dev"
 }
 ```
 
-A better way is to add feature flag variables. Define the feature flag variables and enable or disable them in your `.tfvars` files.
+A better way is to use feature flag variables. Define the feature flag variables and enable or disable them in your `.tfvars` files.
 
 ```hcl
-variable "enable_bucket" {
+variable "enable_dns_support" {
   default = false
 }
 
-variable "enable_bucket_versioning" {
+variable "enable_dns_hostnames" {
   default = false
 }
 
-resource "aws_s3_bucket" "this" {
-  count  = var.enable_bucket ? 1 : 0                            # enabled in tfvars
-  bucket = "my-bucket-${var.env}"
-  acl    = "private"
-
-  dynamic "versioning" {
-    for_each = var.enable_bucket_versioning != null ? [1] : []  # enabled in tfvars
-    content {
-      enabled = true
-    }
-  }
+resource "aws_vpc" "this" {
+  cidr_block           = var.cidr_block
+  enable_dns_support   = var.enable_dns_support
+  enable_dns_hostnames = var.enable_dns_hostnames
 }
+
+# in dev.tfvars
+
+enable_dns_support = true
+enable_dns_hostnames = true
+
+# in stage.tfvars
+
+enable_dns_support = true
 ```
 
 Another way is to use versioned remote modules.
 
 ```hcl
-variable "enable_bucket" {
-  default = false
-}
-
 # in dev:
 
-module "bucket" {
-  source  = "fake-modules/s3-bucket/aws"
-  version = "1.1.0"                      # this module version introduced and enabled bucket versioning
-  name    = "my-bucket-${var.env}"
-  enabled = var.enable_bucket            # enabled in tfvars
+module "vpc" {
+  source     = "fake-modules/vpc/aws"
+  version    = "1.2.0"                 # this module version sets enable_dns_support = true
+  cidr_block = var.cidr_block
 }
 
 # in stage:
 
-module "bucket" {
-  source  = "fake-modules/s3-bucket/aws"
-  version = "1.0.0"                      # this module version did not have bucket versioning
-  name    = "my-bucket-${var.env}"
-  enabled = var.enable_bucket            # enabled in tfvars
+module "vpc" {
+  source     = "fake-modules/vpc/aws"
+  version    = "1.1.0"                 # this module version sets enable_dns_hostnames = true
+  cidr_block = var.cidr_block
 }
 
 # in prod:
 
-module "bucket" {
-  source  = "fake-modules/s3-bucket/aws"
-  version = "1.0.0"                      # this module version did not have bucket versioning
-  name    = "my-bucket-${var.env}"
-  enabled = var.enable_bucket            # disabled in tfvars
+module "vpc" {
+  source     = "fake-modules/vpc/aws"
+  version    = "1.0.0"                 # this module version did not set any dns arguments
+  cidr_block = var.cidr_block
 }
 ```
 
-If you want to version an entire stack with different environments using different versions of code, Pretf can help. See the [vpc](vpc) stack for an example of this.
+Pretf has 2 features that help use different module versions in different environments:
+
+1. Generate the configuration with Python. This allows you to use a variable in the module version argument.
+2. Use [workflow.link_module()](https://pretf.readthedocs.io/en/latest/api/workflow/#link_module) in a custom workflow to use a versioned remote module as a root module. See the [vpc](vpc) stack for an example of this.
 
 ## Thoughts on drift detection
 
