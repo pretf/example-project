@@ -120,6 +120,8 @@ When submitting a pull request, the CI/CD system will plan all affected stacks a
 
 If a CI/CD system has multiple deployment stages (for example: deploy to dev, wait for approval, deploy to stage, wait for approval, deploy to prod) then *the intended state of the infrastructure is hidden within the current state of the CI/CD system*.
 
+If you don't have a CI/CD system and you're manually applying a Terraform change across multiple environments and testing each one as you go, then *the intended state of the infrastructure is hidden within your head*.
+
 Applying all changes immediately encourages better development practices, using feature flags and versioned remote root modules.
 
 How does it work? Let's use the same structure from last time:
@@ -253,3 +255,18 @@ We could declare relationships between stacks. This would allow a CI/CD system t
   * Runs often so it checks every directory often enough.
   * Directories are skipped when there are active deployments in pull requests.
 
+
+
+/plan
+    for each changed stack:
+        create github deployment for this pr + stack
+    clear other github deployments from this pr
+    delete all artifacts from this pr
+    for each changed stack:
+        create terraform plan and store as artifact
+
+/apply
+    for each github deployment from this pr:
+        download tfplan artifact
+        terraform apply tfplan
+        complete github deployment
