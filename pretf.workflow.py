@@ -92,7 +92,7 @@ def github_plan(stacks):
             stderr=subprocess.STDOUT,
         )
         if proc.returncode != 0:
-            error = True
+            success = False
             output = proc.stdout.decode()
             print(output)
             markdown.append(f"```\n{output.strip()}\n```")

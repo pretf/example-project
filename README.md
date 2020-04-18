@@ -118,11 +118,11 @@ Let's say that the module was used by both `vpc` and `vpc-peering` stacks. In th
 
 When submitting a pull request, the CI/CD system will plan all affected stacks as a group, and apply all affected stacks as a group. This encourages having **everything** in the master branch deployed immediately, which in turn discourages you from making changes that affect multiple environments.
 
-If a CI/CD system has multiple deployment stages (for example: deploy to dev, wait for approval, deploy to stage, wait for approval, deploy to prod) then *the intended state of the infrastructure is hidden within the current state of the CI/CD system*.
+If a CI/CD system has multiple deployment stages (for example: deploy to dev, wait for approval, deploy to stage, wait for approval, deploy to prod) then *the desired state of the infrastructure is hidden within the current state of the CI/CD system*.
 
-If you don't have a CI/CD system and you're manually applying a Terraform change across multiple environments and testing each one as you go, then *the intended state of the infrastructure is hidden within your head*.
+If you don't have a CI/CD system and you're manually applying a Terraform change across multiple environments and testing each one as you go, then *the desired state of the infrastructure is hidden within your head*.
 
-Applying all changes immediately encourages better development practices, using feature flags and versioned remote root modules.
+Applying all changes immediately makes the desired state of the infrastructure more clear. It encourages better development practices, using feature flags and versioned remote root modules.
 
 How does it work? Let's use the same structure from last time:
 
