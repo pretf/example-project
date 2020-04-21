@@ -123,7 +123,7 @@ vpc-peering/
 The hierarchy of this project makes it easy to determine the directories to plan/apply when files have changed. If `vpc/main.tf` has changed then it will potentially affect all directories below it: `vpc/dev` and `vpc/prod`. If `vpc/dev/terraform.tfvars` has changed then it will only affect the `vpc/dev` directory, as there are no directories below it.
 
 <details>
-  <summary>Where did the `tags` module from the first structure go?</summary>
+  <summary>Where did the <code>tags</code> module from the first structure go?</summary>
 
   Let's say that the module was only used by the `vpc` directory and it was very simple. In this case, we'd just move it into `vpc/tags.tf`. Just like `vpc/main.tf`, changes to `vpc/tags.tf` will potentially affect the directories below it: `vpc/dev` and `vpc/prod`.
 
