@@ -225,6 +225,30 @@ We could declare relationships between directories. This would allow a CI/CD sys
 
 ## CI/CD with GitHub Actions
 
+* scheduled action:
+    * plan next directory in sequence
+    * if changes, create pull request with plan
+
+* pull request actions:
+    * create
+        * same as /start
+    * sync
+        * same as /stop then /start
+
+* comment on pull request:
+    * /add <dir>
+        * create plan for <dir>
+    * /remove <dir>
+        * delete plan for <dir>
+    * /stop
+        * delete all plans
+    * /start
+        * detect changed directories
+        * create plans for them
+    * apply
+        * apply all plans
+
+
 * Pull request usage:
     * Adding a comment with `/plan` to a pull request creates a GitHub deployment, creates Terraform plans, and stores them as artifacts.
         * One deployment is created per directory being planned.
