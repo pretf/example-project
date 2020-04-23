@@ -223,7 +223,9 @@ The second scenario is likely to happen in many projects. Ideally, the system wo
 
 We could declare relationships between directories. This would allow a CI/CD system to quickly start the plan/apply process for dependant directories. However, this requires extra work for the project maintainers, and the only benefit this has over triggering drift detection is that it would be faster. Unless the project has a very large number of Terraform directories, or it is especially time-sensitive, it is probably not worth the complication of introducing the concept of dependencies.
 
-## CI/CD with GitHub Actions
+## GitHub Actions (ignore this)
+
+Here are some ideas for how GitHub Actions might work.
 
 * scheduled action:
     * plan next directory in sequence
@@ -236,10 +238,10 @@ We could declare relationships between directories. This would allow a CI/CD sys
         * same as /stop then /start
 
 * comment on pull request:
-    * /add <dir>
-        * create plan for <dir>
-    * /remove <dir>
-        * delete plan for <dir>
+    * /add `<dir>`
+        * create plan for `<dir>`
+    * /remove `<dir>`
+        * delete plan for `<dir>`
     * /stop
         * delete all plans
     * /start
@@ -247,39 +249,3 @@ We could declare relationships between directories. This would allow a CI/CD sys
         * create plans for them
     * apply
         * apply all plans
-
-
-* Pull request usage:
-    * Adding a comment with `/plan` to a pull request creates a GitHub deployment, creates Terraform plans, and stores them as artifacts.
-        * One deployment is created per directory being planned.
-        * If there is an active deployment for a directory from another pull request, the command fails with an error saying that it is in use by the other pull request.
-    * Adding a comment with `/apply` to a pull request will apply the changes in the plan files and delete the plan files.
-        * What if someone does a plan for dir1, pushes a change, does a plan for dir2, pushes a change, etc? Only apply last plan, or do plans accumulate?
-        * Applying a change does not automatically finish the active deployments.
-    * Closing or merging the pull request finishes the active deployments and deletes any remaining plans.
-        * It does not automatically apply changes.
-    * Adding a comment with `/clear` (or something) to a pull request will delete plans and end active deployments.
-    * This workflow involves applying changes *before* merging them into the master branch.
-        * If done the other way around, you might merge, then apply, then not notice errors from the apply.
-* Drift detection.
-  * Runs on a schedule.
-  * Creates empty pull requests with plans if it finds unapplied changes.
-  * Checks 1 directory each time it runs, not all of them together, to avoid blocking usage in pull requests.
-  * Runs often so it checks every directory often enough.
-  * Directories are skipped when there are active deployments in pull requests.
-
-
-
-/plan
-    for each changed stack:
-        create github deployment for this pr + stack
-    clear other github deployments from this pr
-    delete all artifacts from this pr
-    for each changed stack:
-        create terraform plan and store as artifact
-
-/apply
-    for each github deployment from this pr:
-        download tfplan artifact
-        terraform apply tfplan
-        complete github deployment
