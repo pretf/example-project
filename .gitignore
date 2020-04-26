@@ -4,7 +4,7 @@ __pycache__/
 .tool-versions
 
 # Ignore temporary files created by Pretf.
-*/*/*
+terraform/*/*/*
 !terraform.tfvars
 !pretf.workflow.py
 

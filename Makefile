@@ -1,4 +1,4 @@
-PYTHON_SOURCES = *.py .github vpc vpc-peering
+PYTHON_SOURCES = *.py .github terraform
 
 .PHONY: tidy
 tidy:

@@ -5,3 +5,6 @@ def pretf_variables(var):
         "stack": "vpc",
         "tags": {"Name": f"pretf-example-project-{var.environment}"},
     }
+
+
+# test

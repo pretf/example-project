@@ -43,8 +43,8 @@ class TestProject(test.SimpleTest):
         ],
     )
     def test_apply(self, stack, env, expected):
-        self.pretf(f"{stack}/{env}").init()
-        outputs = self.pretf(f"{stack}/{env}").apply()
+        self.pretf(f"terraform/{stack}/{env}").init()
+        outputs = self.pretf(f"terraform/{stack}/{env}").apply()
         assert outputs == expected
 
     @test.always
@@ -53,4 +53,4 @@ class TestProject(test.SimpleTest):
         [("vpc-peering", "prod"), ("vpc", "dev"), ("vpc", "prod"), ("vpc", "stage")],
     )
     def test_destroy(self, stack, env):
-        self.pretf(f"{stack}/{env}").destroy()
+        self.pretf(f"terraform/{stack}/{env}").destroy()
